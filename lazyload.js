@@ -238,10 +238,17 @@ LazyLoad = (function (doc) {
       } else if (isCSS && (env.gecko || env.webkit)) {
         // Gecko and WebKit don't support the onload event on link nodes.
         if (env.webkit) {
+          var loaded;
           // In WebKit, we can poll for changes to document.styleSheets to
           // figure out when stylesheets have loaded.
           p.urls[i] = node.href; // resolve relative URLs (or polling won't work)
-          pollWebKit();
+          loaded = pollWebKit();
+          
+          if (loaded) {
+            i--;
+            len = pendingUrls.length;
+            continue;
+          }
         } else {
           // In Gecko, we can import the requested URL into a <style> node and
           // poll for the existence of node.sheet.cssRules. Props to Zach
@@ -312,7 +319,7 @@ LazyLoad = (function (doc) {
   @private
   */
   function pollWebKit() {
-    var css = pending.css, i;
+    var css = pending.css, i, ret = false;
 
     if (css) {
       i = styleSheets.length;
@@ -320,6 +327,7 @@ LazyLoad = (function (doc) {
       // Look for a stylesheet matching the pending URL.
       while (--i >= 0) {
         if (styleSheets[i].href === css.urls[0]) {
+          ret = true;
           finish('css');
           break;
         }
@@ -339,6 +347,7 @@ LazyLoad = (function (doc) {
         }
       }
     }
+    return ret;
   }
 
   return {
